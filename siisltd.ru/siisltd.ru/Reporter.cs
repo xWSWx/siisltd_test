@@ -9,11 +9,11 @@ namespace siisltd.ru
 {
     public static class Reporter
     {
-        static async Task<List<Tuple<DateTime, int>>> CalculateDailyMaxSessionsAsync(string targetPath, bool isSkipHeader)
+        static async Task<Dictionary<DateTime, int>> CalculateDailyMaxSessionsAsync(string targetPath, bool isSkipHeader)
         {
             using (var reader = new StreamReader(targetPath))
             {
-                List<Tuple<DateTime, int>> result = new();
+                Dictionary<DateTime, int> result = new();
                 string? line;
                 
                 Session session;
@@ -43,7 +43,12 @@ namespace siisltd.ru
                         if (start >= tomorrow && currentFinish != DateTime.MinValue)
                         {
                             var today = tomorrow.AddHours(-1).Date;
-                            result.Add(new(today, maxOverlap));
+                            try
+                            {
+                                result[today] = maxOverlap;
+                            }
+                            //TODO: если исходник не будет упорядочен по дате, то здесь может быть ошибка (да и много где). Стоит ли что-то делать, ещё не решил.
+                            catch (Exception ex) {  }
                             tomorrow = start.AddDays(1).Date;
                         }
 
