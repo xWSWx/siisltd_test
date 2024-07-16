@@ -59,6 +59,42 @@ namespace siisltd.ru
                 return result;
             }
         }
-
+        static async Task<Dictionary<string, Dictionary<SessionState, int>>> CalculateOperatorStatesAsync(string targetPath, bool isSkipHeader)
+        {
+            var operatorStates = new Dictionary<string, Dictionary<SessionState, int>>();
+            using (var reader = new StreamReader(targetPath))
+            {
+                string? line;
+                Session session;                
+                var operatorName = "";
+                if (isSkipHeader)
+                {
+                    await reader.ReadLineAsync();
+                }
+                while ((line = await reader.ReadLineAsync()) != null)
+                {
+                    try
+                    {
+                        session = Session.CreateSession(line);
+                        operatorName = session.OperatorName ?? "";
+                    }
+                    //TODO: куда то складировать инфу о необработанных строках. Какой нибудь ErrorReporter...
+                    catch (Exception ex) { Console.WriteLine(ex.Message); continue; }
+                    if (!operatorStates.ContainsKey(operatorName))
+                    {
+                        operatorStates[operatorName] = new Dictionary<SessionState, int> 
+                        { 
+                            { SessionState.Ready, 0 },
+                            { SessionState.CallBack, 0 },
+                            { SessionState.Pause, 0 },
+                            { SessionState.Processing, 0 },
+                            { SessionState.Talk, 0 },
+                        };
+                    }
+                    operatorStates[operatorName][session.State] += session.Duration;
+                }                
+             }
+            return operatorStates;
+        }
     }
 }

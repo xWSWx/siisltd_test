@@ -18,7 +18,7 @@ namespace ProgramNameSpace.Session
         public string? ProjectName { get; set; }
         public string? OperatorName { get; set; }
         public SessionState State { get; set; }
-        public TimeSpan Duration { get; set; }
+        public int Duration { get; set; }
         ////////////////
         //// Скроем пока что
         private Session() { }
@@ -41,9 +41,9 @@ namespace ProgramNameSpace.Session
             {
                 throw new ArgumentException($"cant parse {columns[4]} to SessionState");
             }
-            if (TimeSpan.TryParse(columns[5], out TimeSpan duration)) 
+            if (int.TryParse(columns[5], out int duration)) 
             {
-                throw new ArgumentException($"cant parse {columns[5]} to Duration");
+                throw new ArgumentException($"cant parse {columns[5]} to int");
             }
 
             return new ()
