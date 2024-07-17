@@ -15,6 +15,10 @@ namespace ProgramNameSpace.Reports
         public static async Task<Dictionary<DateTime, int>> CalculateDailyMaxSessionsAsync(string targetPath, bool isSkipHeader = true)
         {
             Dictionary<DateTime, int> result = new();
+            if (!File.Exists(targetPath)) 
+            {
+                return result;
+            }
             using (var fs = new FileStream(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (var reader = new StreamReader(fs))
             {
@@ -85,6 +89,10 @@ namespace ProgramNameSpace.Reports
         public static async Task<Dictionary<string, Dictionary<SessionState, int>>> CalculateOperatorStatesAsync(string targetPath, bool isSkipHeader = true)
         {
             var operatorStates = new Dictionary<string, Dictionary<SessionState, int>>();
+            if (!File.Exists(targetPath))
+            {
+                return operatorStates;
+            }
             using (var fs = new FileStream(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (var reader = new StreamReader(fs))
             {
