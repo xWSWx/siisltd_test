@@ -12,6 +12,12 @@ namespace ProgramNameSpace.Reports
         //////////////////////
         ///// Report Creator
         #region
+        /// <summary>
+        /// Формирует отчёт с максимальным кол-вом одновременных звонок за день.
+        /// </summary>
+        /// <param name="targetPath"></param>
+        /// <param name="isSkipHeader"></param>
+        /// <returns></returns>
         public static async Task<Dictionary<DateTime, int>> CalculateDailyMaxSessionsAsync(string targetPath, bool isSkipHeader = true)
         {
             Dictionary<DateTime, int> result = new();
@@ -26,7 +32,6 @@ namespace ProgramNameSpace.Reports
                 string? line;
 
                 Session session;
-                int maxOverlap = 0;
                 int currentOverlap = 0;
                 DateTime currentFinish = DateTime.MinValue;
                 DateTime start;
@@ -37,8 +42,11 @@ namespace ProgramNameSpace.Reports
                 {
                     await reader.ReadLineAsync();
                 }
+                bool isRecordsExists = false;
                 while ((line = await reader.ReadLineAsync()) != null)
                 {
+                    //Пока что кастыльная защита от "нет записей"
+                    isRecordsExists = true;
                     try
                     {
                         session = Session.CreateSession(line);
@@ -50,6 +58,8 @@ namespace ProgramNameSpace.Reports
 
                     if (start > currentFinish)
                     {
+                        /////////////////////////////////////////////////////////
+                        //// Переход на следующий_день провоцирует строку отчёта
                         if (start >= tomorrow)
                         {
                             today = start.Date;
@@ -66,7 +76,8 @@ namespace ProgramNameSpace.Reports
                             //TODO: если исходник не будет упорядочен по дате (диверсия), то код будет выдавать экзепшен на вставке в словарь. Стоит ли что-то делать, ещё не решил.
                             catch (Exception ex) { }
                         }
-
+                        /////////////////////////////////////////////////////////
+                        //// Сбрасываем счётчик если был простой
                         currentOverlap = 1;
                         currentFinish = finish;
                     }
@@ -80,12 +91,19 @@ namespace ProgramNameSpace.Reports
                 //// Крайний день конец записей     
                 try
                 {
-                    result[today] = currentOverlap;
+                    if(isRecordsExists)
+                        result[today] = currentOverlap;
                 }
                 catch (Exception ex) { }
             }
             return result;
         }
+        /// <summary>
+        /// Формирует отчёт с временем каждого состояния для оператора
+        /// </summary>
+        /// <param name="targetPath"></param>
+        /// <param name="isSkipHeader"></param>
+        /// <returns></returns>
         public static async Task<Dictionary<string, Dictionary<SessionState, int>>> CalculateOperatorStatesAsync(string targetPath, bool isSkipHeader = true)
         {
             var operatorStates = new Dictionary<string, Dictionary<SessionState, int>>();
@@ -138,6 +156,10 @@ namespace ProgramNameSpace.Reports
         const int ReportStatesPadding = 10;
         const int ReportNamesPadding = 35;
         static readonly string operatorStatesReportHeaderBeautiful = "ФИО".PadRight(ReportNamesPadding) + "Пауза".PadRight(ReportStatesPadding) + "Готов".PadRight(ReportStatesPadding) + "Разговор".PadRight(ReportStatesPadding)+ "Обработка".PadRight(ReportStatesPadding) + "Перезвон".PadRight(ReportStatesPadding);
+        /// <summary>
+        /// Простая печать в консоль отчёта с максимальным кол-вом одновременных звонок за день.
+        /// </summary>
+        /// <param name="report"></param>
         public static void PrintDailyMaxReport(Dictionary<DateTime, int> report) 
         {
             //////////////////////
@@ -148,6 +170,10 @@ namespace ProgramNameSpace.Reports
                 Console.WriteLine($"{a.Key}\t\t{a.Value}");
             }
         }
+        /// <summary>
+        /// Простая печать в консоль отчёта с временем каждого состояния для оператора
+        /// </summary>
+        /// <param name="report"></param>
         public static void PrintOperatorStatesReport(Dictionary<string, Dictionary<SessionState, int>> report) 
         {
             StringBuilder stringBuilder = new StringBuilder();
@@ -166,6 +192,10 @@ namespace ProgramNameSpace.Reports
                 stringBuilder.Clear();
             }
         }
+        /// <summary>
+        /// Отформатированная печать в консоль отчёта с временем каждого состояния для оператора
+        /// </summary>
+        /// <param name="report"></param>
         public static void PrintOperatorStatesReportBeautiful(Dictionary<string, Dictionary<SessionState, int>> report) 
         {
             // Определение ширины колонок
