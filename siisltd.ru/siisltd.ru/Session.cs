@@ -5,11 +5,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ProgramNameSpace.Session
+namespace ProgramNameSpace.Sessions
 {
     public enum SessionState
     {
-        Pause, Ready, Talk, Processing, CallBack
+        Pause = 0, Ready = 1, Talk = 2, Processing = 3, CallBack = 4,
+        //TODO: Просто простите меня за это. Найду время, сделаю красиво (локализацию enum-чика лень прикручивать сейчас)
+        Пауза = 0, Готов = 1, Разговор  = 2, Обработка = 3, Перезвон = 4
     }
     public class Session
     {
@@ -41,7 +43,7 @@ namespace ProgramNameSpace.Session
             {
                 throw new ArgumentException($"cant parse {columns[4]} to SessionState");
             }
-            if (int.TryParse(columns[5], out int duration)) 
+            if (!int.TryParse(columns[5], out int duration)) 
             {
                 throw new ArgumentException($"cant parse {columns[5]} to int");
             }

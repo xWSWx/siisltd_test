@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "siisltd.ru": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\Users\\Ivan\\Downloads\\Telegram Desktop\\test_data_onemonth.csv\""
+    }
+  }
+}
