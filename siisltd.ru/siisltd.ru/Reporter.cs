@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using ProgramNameSpace.Sessions;
+using ProgramNameSpace.Wrappers;
 namespace ProgramNameSpace.Reports
 {
     public static class Reporter
@@ -18,7 +19,7 @@ namespace ProgramNameSpace.Reports
         /// <param name="targetPath"></param>
         /// <param name="isSkipHeader"></param>
         /// <returns></returns>
-        public static async Task<Dictionary<DateTime, int>> CalculateDailyMaxSessionsAsync(string targetPath, bool isSkipHeader = true)
+        public static async Task<Dictionary<DateTime, int>> CalculateDailyMaxSessionsAsync(string targetPath, CustomCancellationToken? token = null, bool isSkipHeader = true)
         {
             Dictionary<DateTime, int> result = new();
             if (!File.Exists(targetPath)) 
@@ -28,73 +29,73 @@ namespace ProgramNameSpace.Reports
             using (var fs = new FileStream(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (var reader = new StreamReader(fs))
             {
-                
+                List<DateTime> toRemove = new List<DateTime>();
+                List<DateTime> finishes = new List<DateTime>();
                 string? line;
 
                 Session session;
-                int currentOverlap = 0;
+                int todayMaxOverlap = 0;
                 DateTime currentFinish = DateTime.MinValue;
                 DateTime start;
                 DateTime finish;
                 DateTime tomorrow = DateTime.MinValue.AddDays(1).Date;
                 DateTime today = DateTime.MinValue;
+                DateTime barrier = DateTime.MinValue;
                 if (isSkipHeader)
                 {
                     await reader.ReadLineAsync();
                 }
+                var isTomorrow = false;
                 bool isRecordsExists = false;
                 while ((line = await reader.ReadLineAsync()) != null)
                 {
+                    //////////////////////////////////
+                    //// А может, кто то паузу захотел
+                    token?.Wait();
                     //Пока что кастыльная защита от "нет записей"
                     isRecordsExists = true;
+
                     try
                     {
                         session = Session.CreateSession(line);
                     }
                     //TODO: куда то складировать инфу о необработанных строках. Какой нибудь ErrorReporter...
                     catch (Exception ex) { Console.WriteLine(ex.Message); continue; }
-                    start = session.StartTime.Date;
-                    finish = session.FinishTime.Date;
 
-                    if (start > currentFinish)
+                    start = session.StartTime;
+                    finish = session.FinishTime;
+
+                    isTomorrow = start >= tomorrow;
+                    if (isTomorrow)
                     {
-                        /////////////////////////////////////////////////////////
-                        //// Переход на следующий_день провоцирует строку отчёта
-                        if (start >= tomorrow)
-                        {
-                            today = start.Date;
-                            tomorrow = today.AddDays(1).Date;
-                            try
-                            {
-                                //TODO: так себе кастыль на крайнее значение (первый вход)
-                                if (currentFinish != DateTime.MinValue)
-                                {
-                                    var yesterday = today.AddDays(-1).Date;
-                                    result[yesterday] = currentOverlap;
-                                }
-                            }
-                            //TODO: если исходник не будет упорядочен по дате (диверсия), то код будет выдавать экзепшен на вставке в словарь. Стоит ли что-то делать, ещё не решил.
-                            catch (Exception ex) { }
-                        }
-                        /////////////////////////////////////////////////////////
-                        //// Сбрасываем счётчик если был простой
-                        currentOverlap = 1;
-                        currentFinish = finish;
+                        result[today] = todayMaxOverlap;
+                        todayMaxOverlap = 0;
+                        today = start.Date;
+                        tomorrow = today.AddDays(1).Date;
                     }
-                    else
+                    
+                    finishes.RemoveAll(x => x < start);                    
+                    finishes.Add(finish);
+
+                    todayMaxOverlap = Math.Max(todayMaxOverlap, finishes.Count);
+
+                    if (token != null && token.Cancelled) 
                     {
-                        currentOverlap++;
-                        currentFinish = currentFinish > finish ? currentFinish : finish;
-                    }
+                        ///////////////////////////////////////////////////////
+                        //// Ну раз отменили - что нибудь сделать с этим.
+                        return result;
+                    };
                 }
                 /////////////////////
                 //// Крайний день конец записей     
                 try
                 {
                     if(isRecordsExists)
-                        result[today] = currentOverlap;
+                        result[today] = todayMaxOverlap;
                 }
                 catch (Exception ex) { }
+
+                result.Remove(DateTime.MinValue);
             }
             return result;
         }
@@ -104,7 +105,7 @@ namespace ProgramNameSpace.Reports
         /// <param name="targetPath"></param>
         /// <param name="isSkipHeader"></param>
         /// <returns></returns>
-        public static async Task<Dictionary<string, Dictionary<SessionState, int>>> CalculateOperatorStatesAsync(string targetPath, bool isSkipHeader = true)
+        public static async Task<Dictionary<string, Dictionary<SessionState, int>>> CalculateOperatorStatesAsync(string targetPath, CustomCancellationToken? token = null, bool isSkipHeader = true)
         {
             var operatorStates = new Dictionary<string, Dictionary<SessionState, int>>();
             if (!File.Exists(targetPath))
@@ -123,6 +124,9 @@ namespace ProgramNameSpace.Reports
                 }
                 while ((line = await reader.ReadLineAsync()) != null)
                 {
+                    //////////////////////////////////
+                    //// А может, кто то паузу захотел
+                    token?.Wait();
                     try
                     {
                         session = Session.CreateSession(line);
@@ -142,6 +146,13 @@ namespace ProgramNameSpace.Reports
                         };
                     }
                     operatorStates[operatorName][session.State] += session.Duration;
+
+                    if (token != null && token.Cancelled)
+                    {
+                        ///////////////////////////////////////////////////////
+                        //// Ну раз отменили - что нибудь сделать с этим.
+                        return operatorStates;
+                    };
                 }                
              }
             return operatorStates;
